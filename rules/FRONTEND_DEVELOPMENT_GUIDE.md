@@ -1,4 +1,4 @@
-# nuxt-project 개발 규칙
+# nuxt-project(FrontEnd) 개발 규칙
 
 이 문서는 `nuxt-project`의 일관성 있는 개발을 위한 규칙을 정의합니다.
 
@@ -39,18 +39,58 @@
 - **`stores`**: Pinia 스토어를 기능별로 분리하여 작성. (예: `post.ts`, `auth.ts`)
 - **`types`**: 프로젝트 전역에서 사용되는 TypeScript 타입을 정의.
 
-## 4. 상태 관리 (Pinia)
+## 4. 상태 관리 및 API 통신 (Pinia)
 
 - 기능별로 스토어 파일을 분리하여 `stores` 디렉토리에서 관리.
 - 스토어 ID는 파일명과 일치시키고, `defineStore`를 사용하여 명확하게 정의.
+- 클라이언트 사이드의 API 통신은 `stores` 의 function 으로 구현
+  - API 호출은 `$fetch` 대신에 `$fetch` 확장 함수인 `useFetchWithAuth` 사용.
+- **API 통신 흐름**: `***.vue` -> `stores` -> `Backend RestAPI` 순서로 진행됨.
+- **store 모듈 작성 시 참고 사례**: `stores/post.ts`
 
-## 5. API 통신
+## 5. Nuxt.js Page 파일또는 Components 작성
 
-- 클라이언트 사이드의 API 통신은 `stores` 에 구현하고 `useFetchWithAuth` 또는 `fetchWithAuth`를 사용하여 API를 호출.
-  - **API 통신 흐름**: `***.vue` -> `stores` -> `Backend RestAPI` 순서로 진행됨.
-  - **store 작성 예**: `stores/post.ts`
+- `<script setup>` 옵션 사용
+- `Backend API Call`은 `stores\**` 에 구현된 function을 통해서 구현할 것
+- **script 작성 시 참고 사례**
+
+```<script setup> 사례
+<script setup>
+const route = useRoute()
+const router = useRouter()
+const postSlug = route.params.postSlug
+const post = ref(null)
+
+const { getPost, deletePost } = usePostStore()
+
+const result = await getPost(postSlug)
+post.value = result
+console.log('post: ', post.value)
+// post.value = result
+
+const handleDeletePost = async () => {
+  if (confirm('삭제 하시겠습니까?') === false) return;
+  try {
+    await deletePost(postSlug)
+    Notify.create({
+      message: '글을 삭제하였습니다.',
+      type: 'info',
+      color: 'primary',
+      position: 'top',
+    })
+    router.push('/community')
+  } catch (err) {
+    console.log(err)
+    Notify.create({
+      message: err.value.data.message,
+      type: 'nagative',
+    })
+  }
+};
+</script>
+```
 
 ## 6. 환경 변수
 
-- 환경 변수는 `nuxt.config.ts`의 `runtimeConfig`을 통해 관리합니다.
-- 서버 전용 변수는 최상위 `runtimeConfig`에, 클라이언트와 서버에서 모두 사용 가능한 변수는 `public` 객체 내에 정의합니다.
+- 환경 변수는 `nuxt.config.ts`의 `runtimeConfig`을 통해 관리.
+- 서버 전용 변수는 최상위 `runtimeConfig`에, 클라이언트와 서버에서 모두 사용 가능한 변수는 `public` 객체 내에 정의.
